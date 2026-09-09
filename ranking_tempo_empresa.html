@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <title>Ranking Tempo de Empresa | Indemetal Etiquetas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+<script type="module">import { protegerPagina } from "./js/page-auth.js"; await protegerPagina({perfis:["administrador","gestor"],destino:"funcionarios_inicio.html"});</script></head>
+<body class="bg-light p-4">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container mb-3 app-topbar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="app-brand">
+                <div class="app-brand-mark">I</div>
+                <div><div class="app-brand-title">Projeto Funcionários</div><div class="app-brand-subtitle">Indemetal Etiquetas · <span data-user-role>Gestão</span> · <span data-user-sector>Setor</span></div></div>
+            </div>
+            <a href="funcionarios_inicio.html" class="btn btn-sm btn-outline-secondary">Início</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card shadow-sm p-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Ranking de Tempo de Empresa</h3>
+                <a href="funcionarios_inicio.html" class="btn btn-outline-secondary">Voltar</a>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label for="filtroBusca" class="form-label">Buscar por nome ou registro</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Digite nome ou numero do registro">
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroStatus" class="form-label">Status</label>
+                    <select id="filtroStatus" class="form-select">
+                        <option value="ativos">Ativos</option>
+                        <option value="promovido">Promovidos</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="btnLimparFiltros" class="btn btn-outline-dark w-100">Limpar Filtros</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Posicao</th>
+                            <th>No Registro</th>
+                            <th>Funcionario</th>
+                            <th>Data Registro</th>
+                            <th>Tempo de Empresa</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaRanking"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { formatarDataBr, calcularTempoEmpresa } from "./js/app-utils.js";
+        import { iniciarApp, listarFuncionarios } from "./js/firebase-db.js";
+
+        function statusFuncionario(funcionario) {
+            const dispensado = Boolean(funcionario.dataDispensa) || Boolean(funcionario.motivoDispensa && funcionario.motivoDispensa.trim());
+            if (dispensado) {
+                return '<span class="badge text-bg-danger">Dispensado</span>';
+            }
+            const quantidadePromocoes = Number(funcionario.quantidadePromocoes || 0);
+            if (funcionario.promovido || quantidadePromocoes > 0) {
+                const medalhas = "🏅".repeat(quantidadePromocoes);
+                const titulo = `${quantidadePromocoes} promocao${quantidadePromocoes !== 1 ? "es" : ""} registrada${quantidadePromocoes !== 1 ? "s" : ""}`;
+                return `<span class="badge text-bg-warning fs-6" title="${titulo}" data-bs-toggle="tooltip" data-bs-placement="top">${medalhas} Promovido</span>`;
+            }
+            return '<span class="badge text-bg-success">Ativo</span>';
+        }
+
+        async function carregarRanking() {
+            const funcionarios = await listarFuncionarios();
+            const tabela = document.getElementById("tabelaRanking");
+            tabela.innerHTML = "";
+            const termoBusca = document.getElementById("filtroBusca").value.trim().toLowerCase();
+            const filtroStatus = document.getElementById("filtroStatus").value;
+
+            const somenteAtivos = funcionarios.filter((funcionario) => {
+                const dispensado = Boolean(funcionario.dataDispensa) || Boolean(funcionario.motivoDispensa && funcionario.motivoDispensa.trim());
+                return !dispensado;
+            });
+
+            const ordenados = [...somenteAtivos].sort((a, b) => {
+                if (!a.dataRegistro && !b.dataRegistro) {
+                    return 0;
+                }
+                if (!a.dataRegistro) {
+                    return 1;
+                }
+                if (!b.dataRegistro) {
+                    return -1;
+                }
+                return a.dataRegistro.localeCompare(b.dataRegistro);
+            });
+
+            const filtrados = ordenados.filter((funcionario) => {
+                const passouStatus =
+                    filtroStatus === "ativos" ||
+                    (filtroStatus === "promovido" && Boolean(funcionario.promovido));
+
+                if (!passouStatus) {
+                    return false;
+                }
+
+                if (!termoBusca) {
+                    return true;
+                }
+
+                const nome = (funcionario.nomeFuncionario || "").toLowerCase();
+                const registro = (funcionario.numeroRegistro || "").toLowerCase();
+                return nome.includes(termoBusca) || registro.includes(termoBusca);
+            });
+
+            if (filtrados.length === 0) {
+                tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum funcionario ativo encontrado.</td></tr>';
+                return;
+            }
+
+            filtrados.forEach((funcionario, index) => {
+                const linha = document.createElement("tr");
+                linha.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${funcionario.numeroRegistro || "-"}</td>
+                    <td>${funcionario.nomeFuncionario || "-"}</td>
+                    <td>${formatarDataBr(funcionario.dataRegistro)}</td>
+                    <td>${calcularTempoEmpresa(funcionario.dataRegistro)}</td>
+                    <td>${statusFuncionario(funcionario)}</td>
+                `;
+                tabela.appendChild(linha);
+            });
+
+            // Inicializa tooltips do Bootstrap após renderizar
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                new bootstrap.Tooltip(el);
+            });
+        }
+
+        try {
+            await iniciarApp();
+            await carregarRanking();
+        } catch (erro) {
+            alert(erro.message);
+        }
+
+        document.getElementById("filtroBusca").addEventListener("input", () => carregarRanking());
+        document.getElementById("filtroStatus").addEventListener("change", () => carregarRanking());
+        document.getElementById("btnLimparFiltros").addEventListener("click", () => {
+            document.getElementById("filtroBusca").value = "";
+            document.getElementById("filtroStatus").value = "ativos";
+            carregarRanking();
+        });
+    </script>
+</body>
+</html>

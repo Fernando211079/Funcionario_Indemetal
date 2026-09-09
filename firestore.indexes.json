@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "comunicacoes_pessoal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "setor",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

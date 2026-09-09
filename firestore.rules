@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function auth() { return request.auth != null; }
+    function bootstrap() { return auth() && request.auth.uid == 'LF9vKmmEY6S6qfIiMcuy3bVKI4g2'; }
+    function perfil() { return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data; }
+    function admin() { return bootstrap() || (auth() && perfil().perfil == 'administrador' && perfil().ativo == true); }
+    function rh() { return auth() && perfil().perfil == 'rh' && perfil().ativo == true; }
+    function gestor() { return auth() && perfil().perfil == 'gestor' && perfil().ativo == true; }
+    function gerente() { return auth() && perfil().perfil == 'gerente_producao' && perfil().ativo == true; }
+    function setorAtual() { return perfil().setor; }
+    match /usuarios/{uid} {
+      allow read: if auth() && (request.auth.uid == uid || admin());
+      allow create, update, delete: if admin();
+    }
+    match /setores/{id} { allow read: if auth(); allow create, update, delete: if admin(); }
+    match /funcionarios/{id} {
+      allow read: if admin() || rh() || (gestor() && (resource.data.setorTrabalho == setorAtual() || resource.data.setor == setorAtual()));
+      allow create: if admin() || rh() || (gestor() && request.resource.data.setorTrabalho == setorAtual());
+      allow update: if admin() || rh() || (gestor() && resource.data.setorTrabalho == setorAtual() && request.resource.data.setorTrabalho == setorAtual());
+      allow delete: if admin() || (gestor() && (resource.data.setorTrabalho == setorAtual() || resource.data.setor == setorAtual()));
+    }
+    match /comunicacoes_pessoal/{id} {
+      // "legada" = CP anterior à V6.1, sem o campo statusGerente. Ela nunca entra na fila
+      // do Gerente (a consulta é por igualdade), então segue direto para o aceite do RH.
+      function legada() { return !('statusGerente' in resource.data); }
+      // Campos de fluxo: só Gerente, RH e Administrador podem mexer neles.
+      function camposDeFluxo() { return ['statusGerente','statusRH','statusCP','etapaAtual','historico','gerenteUid','gerenteEm','gerenteObservacao','rhUid','observacaoRH','recebidaEm','aprovadaEm','recusadaEm']; }
+      function gerentePodeVer() {
+        return resource.data.setor != 'Administração'
+          && (resource.data.get('statusGerente', '') == 'Pendente' || resource.data.get('gerenteUid', '') == request.auth.uid);
+      }
+      function rhPodeDecidir() {
+        return resource.data.setor == 'Administração' || legada() || resource.data.statusGerente == 'Aprovada';
+      }
+      // Observação avulsa: só acrescenta 1 entrada "Observação" no histórico, sem mexer no status.
+      function novaObservacao() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['historico', 'atualizadoEm'])
+          && request.resource.data.historico.size() == resource.data.get('historico', []).size() + 1
+          && request.resource.data.historico[request.resource.data.historico.size() - 1].acao == 'Observação'
+          && request.resource.data.historico[request.resource.data.historico.size() - 1].por == request.auth.uid;
+      }
+      allow read: if admin() || rh()
+        || (gerente() && (resource.data.get('statusGerente', '') == 'Pendente' || resource.data.get('gerenteUid', '') == request.auth.uid))
+        || (gestor() && resource.data.setor == setorAtual());
+      allow create: if admin() || (gestor() && request.resource.data.setor == setorAtual());
+      allow update: if admin()
+        || (gerente() && gerentePodeVer() && (
+              novaObservacao()
+              || (resource.data.get('statusGerente', '') == 'Pendente'
+                  && request.resource.data.statusGerente in ['Aprovada','Recusada']
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statusGerente','statusCP','etapaAtual','statusEnvio','gerenteObservacao','gerenteUid','gerenteEm','atualizadoEm','historico']))
+            ))
+        || (rh() && rhPodeDecidir() && (
+              novaObservacao()
+              || (request.resource.data.statusRH in ['Recebida','Aprovada','Recusada']
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statusRH','statusCP','etapaAtual','statusEnvio','observacaoRH','rhUid','atualizadoEm','recebidaEm','aprovadaEm','recusadaEm','historico']))
+            ))
+        || (gestor() && resource.data.setor == setorAtual() && (
+              novaObservacao()
+              || !request.resource.data.diff(resource.data).affectedKeys().hasAny(camposDeFluxo())
+            ));
+      allow delete: if admin() || (gestor() && resource.data.setor == setorAtual());
+    }
+    match /configuracoes/{id} { allow read: if auth(); allow create, update: if admin() || rh() || gestor() || gerente(); allow delete: if admin(); }
+  }
+}

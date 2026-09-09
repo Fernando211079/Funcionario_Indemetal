@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ee0101">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+    <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <title>Programação de Férias | RH</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+    <style>
+        .card-alerta-ferias { border-left: 5px solid; }
+        .card-alerta-ferias.alerta-urgente  { border-left-color: #dc3545; background: #fff5f5; }
+        .card-alerta-ferias.alerta-proximo  { border-left-color: #ffc107; background: #fffbeb; }
+        .card-alerta-ferias.alerta-atencao  { border-left-color: #0dcaf0; background: #f0fbff; }
+        .barra-progresso-ferias { height: 8px; border-radius: 4px; }
+    </style>
+    <script type="module">
+        import { protegerPagina } from "./js/page-auth.js";
+        await protegerPagina({ perfis: ["administrador", "rh"], destino: "rh_painel.html" });
+    </script>
+</head>
+<body class="bg-light p-4">
+
+    <main class="container home-shell">
+
+        <!-- Cabeçalho -->
+        <section class="card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <div class="app-brand-title fs-4">Programação de Férias</div>
+                    <div class="app-brand-subtitle">Visão geral de todas as férias programadas — todos os setores</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="rh_painel.html" class="btn btn-outline-secondary">← Voltar ao Painel RH</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resumo de contadores -->
+        <section class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="text-muted small">Em férias hoje</div>
+                    <div id="cntEmFerias" class="display-6 fw-bold text-success">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="text-muted small">Programadas (próx. 30 dias)</div>
+                    <div id="cntProximas" class="display-6 fw-bold text-primary">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="text-muted small">Total programadas</div>
+                    <div id="cntProgramadas" class="display-6 fw-bold">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="text-muted small">Histórico (encerradas)</div>
+                    <div id="cntHistorico" class="display-6 fw-bold text-muted">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filtro por setor -->
+        <section class="card p-3 mb-3">
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                <label for="filtroSetor" class="form-label mb-0 fw-semibold">Filtrar por setor:</label>
+                <select id="filtroSetor" class="form-select" style="max-width: 260px;">
+                    <option value="">Todos os setores</option>
+                </select>
+                <span id="lblTotal" class="text-muted small ms-auto"></span>
+            </div>
+        </section>
+
+        <!-- Alertas (próximas 30 dias) -->
+        <div id="areaAlertas" class="mb-3"></div>
+
+        <!-- Em férias hoje -->
+        <section class="card p-4 mb-3">
+            <h5 class="mb-3 text-success">Em férias hoje</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Setor</th>
+                            <th>Turno</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaEmFerias"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Férias programadas (cards) -->
+        <section class="card p-4 mb-3">
+            <h5 class="mb-3">Férias programadas</h5>
+            <div id="cardsProgramadas" class="row g-3"></div>
+        </section>
+
+        <!-- Histórico -->
+        <section class="card p-4 mb-3">
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                <h5 class="mb-0 text-muted">Histórico (férias encerradas)</h5>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <label for="filtroAnoHistorico" class="form-label mb-0 small text-muted">Ano:</label>
+                    <select id="filtroAnoHistorico" class="form-select form-select-sm" style="width:100px;">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Setor</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaHistorico"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import {
+            formatarDataBr,
+            obterDataHojeIso,
+            calcularDiasAte,
+            classificarPeriodoFerias,
+            obterInfoAlertaFerias,
+            coletarPeriodosFerias
+        } from "./js/app-utils.js";
+        import {
+            iniciarApp,
+            listarFuncionarios
+        } from "./js/firebase-db.js";
+
+        const $ = id => document.getElementById(id);
+
+        let todosOsPeriodos = [];
+        let setorAtual = "";
+
+        /* ── utilitário: pega o setor do funcionário (suporte a campo legado) ── */
+        function setorDe(funcionario) {
+            return funcionario.setorTrabalho || funcionario.setor || "-";
+        }
+
+        /* ── preenche o select de setores ─────────────────────────────────────── */
+        function preencherFiltroSetores(periodos) {
+            const setores = [...new Set(periodos.map(({ funcionario }) => setorDe(funcionario)).filter(Boolean))].sort();
+            const sel = $("filtroSetor");
+            const anterior = sel.value;
+            sel.innerHTML = '<option value="">Todos os setores</option>' +
+                setores.map(s => `<option${s === anterior ? " selected" : ""}>${s}</option>`).join("");
+            setorAtual = sel.value;
+        }
+
+        /* ── filtra os períodos pelo setor selecionado ─────────────────────────── */
+        function filtrar(periodos) {
+            if (!setorAtual) return periodos;
+            return periodos.filter(({ funcionario }) => setorDe(funcionario) === setorAtual);
+        }
+
+        /* ── alertas: próximas 30 dias ─────────────────────────────────────────── */
+        function renderAlertas(periodos, hoje) {
+            const area = $("areaAlertas");
+            const proximas = periodos
+                .filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "programada")
+                .map(item => ({ ...item, dias: calcularDiasAte(item.ferias.dataInicio, hoje) }))
+                .filter(item => item.dias !== null && item.dias <= 30)
+                .sort((a, b) => a.dias - b.dias);
+
+            if (!proximas.length) { area.innerHTML = ""; return; }
+
+            const html = proximas.map(({ funcionario, ferias, dias }) => {
+                const alerta = obterInfoAlertaFerias(dias);
+                const classeCard = dias <= 3 ? "alerta-urgente" : dias <= 7 ? "alerta-proximo" : "alerta-atencao";
+                const percentual = Math.max(0, Math.min(100, ((30 - dias) / 30) * 100));
+                return `
+                    <div class="card card-alerta-ferias ${classeCard} shadow-sm mb-2 p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <span class="badge bg-${alerta.classe.split(" ")[0]} me-2">${alerta.texto}</span>
+                                <strong>${funcionario.nomeFuncionario || "-"}</strong>
+                                <span class="badge bg-secondary ms-1">${setorDe(funcionario)}</span>
+                                <span class="text-muted small ms-2">
+                                    ${formatarDataBr(ferias.dataInicio)} a ${formatarDataBr(ferias.dataFim)}
+                                </span>
+                            </div>
+                            <a href="historico_funcionario.html?id=${funcionario.id}" class="btn btn-sm btn-outline-dark">Ver ficha</a>
+                        </div>
+                        <div class="progress barra-progresso-ferias mt-2">
+                            <div class="progress-bar bg-${alerta.classe.split(" ")[0]}" style="width: ${percentual}%"></div>
+                        </div>
+                    </div>`;
+            }).join("");
+
+            area.innerHTML = `
+                <div class="alert alert-light border mb-2 py-2">
+                    <strong>Lembretes:</strong> ${proximas.length} férias programada(s) nos próximos 30 dias
+                </div>
+                ${html}`;
+        }
+
+        /* ── tabela "em férias hoje" ──────────────────────────────────────────── */
+        function renderEmFerias(periodos, hoje) {
+            const tabela = $("tabelaEmFerias");
+            const em = periodos.filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "em_ferias");
+            $("cntEmFerias").textContent = em.length;
+
+            if (!em.length) {
+                tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Ninguém em férias hoje.</td></tr>';
+                return;
+            }
+            tabela.innerHTML = em.map(({ funcionario, ferias }) => `
+                <tr class="table-success">
+                    <td><strong>${funcionario.nomeFuncionario || "-"}</strong></td>
+                    <td><span class="badge bg-secondary">${setorDe(funcionario)}</span></td>
+                    <td>${funcionario.turnoTrabalho || "-"}</td>
+                    <td>${formatarDataBr(ferias.dataInicio)}</td>
+                    <td>${formatarDataBr(ferias.dataFim)}</td>
+                    <td>${ferias.observacao || "-"}</td>
+                </tr>`).join("");
+        }
+
+        /* ── cards "férias programadas" ──────────────────────────────────────── */
+        function renderProgramadas(periodos, hoje) {
+            const container = $("cardsProgramadas");
+            const programadas = periodos
+                .filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "programada")
+                .map(item => ({ ...item, dias: calcularDiasAte(item.ferias.dataInicio, hoje) }))
+                .sort((a, b) => a.dias - b.dias);
+
+            $("cntProgramadas").textContent = programadas.length;
+            $("cntProximas").textContent = programadas.filter(i => i.dias <= 30).length;
+
+            if (!programadas.length) {
+                container.innerHTML = '<div class="col-12"><p class="text-muted mb-0">Nenhuma férias programada.</p></div>';
+                return;
+            }
+            container.innerHTML = programadas.map(({ funcionario, ferias, dias }) => {
+                const alerta = obterInfoAlertaFerias(dias);
+                return `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 shadow-sm ${alerta.destaque ? "border-warning" : ""}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge bg-${alerta.classe.split(" ")[0]}">${alerta.texto}</span>
+                                    <span class="badge bg-secondary">${setorDe(funcionario)}</span>
+                                </div>
+                                <h6 class="card-title mb-1">${funcionario.nomeFuncionario || "-"}</h6>
+                                <p class="card-text small text-muted mb-1">${funcionario.turnoTrabalho || "-"}</p>
+                                <p class="card-text mb-2">
+                                    <strong>${formatarDataBr(ferias.dataInicio)}</strong> até
+                                    <strong>${formatarDataBr(ferias.dataFim)}</strong>
+                                </p>
+                                ${ferias.observacao ? `<p class="small mb-0 text-muted">${ferias.observacao}</p>` : ""}
+                                <a href="historico_funcionario.html?id=${funcionario.id}" class="btn btn-sm btn-outline-secondary mt-2">Ver ficha</a>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join("");
+        }
+
+        /* ── popula select de anos do histórico ───────────────────────────────── */
+        function popularAnosHistorico(todasPassadas) {
+            const anos = [...new Set(todasPassadas.map(({ ferias }) => (ferias.dataInicio || "").slice(0, 4)).filter(Boolean))].sort((a, b) => b - a);
+            const sel = $("filtroAnoHistorico");
+            const anterior = sel.value;
+            sel.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option${a === anterior ? " selected" : ""}>${a}</option>`).join("");
+        }
+
+        /* ── tabela histórico ────────────────────────────────────────────────── */
+        function renderHistorico(periodos, hoje) {
+            const tabela = $("tabelaHistorico");
+            const todasPassadas = periodos.filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "passada");
+            const anoFiltro = $("filtroAnoHistorico").value;
+
+            $("cntHistorico").textContent = todasPassadas.length;
+            popularAnosHistorico(todasPassadas);
+
+            const passadas = todasPassadas
+                .filter(({ ferias }) => !anoFiltro || (ferias.dataInicio || "").startsWith(anoFiltro))
+                .sort((a, b) => (b.ferias.dataFim || "").localeCompare(a.ferias.dataFim || ""));
+
+            if (!passadas.length) {
+                tabela.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sem histórico para este ano.</td></tr>';
+                return;
+            }
+            tabela.innerHTML = passadas.map(({ funcionario, ferias }) => `
+                <tr>
+                    <td>${funcionario.nomeFuncionario || "-"}</td>
+                    <td><span class="badge bg-secondary">${setorDe(funcionario)}</span></td>
+                    <td>${formatarDataBr(ferias.dataInicio)}</td>
+                    <td>${formatarDataBr(ferias.dataFim)}</td>
+                </tr>`).join("");
+        }
+
+        /* ── renderização principal ──────────────────────────────────────────── */
+        function renderizar() {
+            const hoje = obterDataHojeIso();
+            const visiveis = filtrar(todosOsPeriodos);
+            $("lblTotal").textContent = `${visiveis.length} registro(s)`;
+            renderAlertas(visiveis, hoje);
+            renderEmFerias(visiveis, hoje);
+            renderProgramadas(visiveis, hoje);
+            renderHistorico(visiveis, hoje);
+        }
+
+        /* ── bootstrap da página ─────────────────────────────────────────────── */
+        try {
+            await iniciarApp();
+            const funcionarios = await listarFuncionarios();
+            todosOsPeriodos = coletarPeriodosFerias(funcionarios);
+            preencherFiltroSetores(todosOsPeriodos);
+
+            $("filtroSetor").addEventListener("change", () => {
+                setorAtual = $("filtroSetor").value;
+                renderizar();
+            });
+
+            $("filtroAnoHistorico").addEventListener("change", renderizar);
+
+            renderizar();
+        } catch (erro) {
+            document.querySelector("main").innerHTML =
+                `<div class="alert alert-danger"><strong>Erro ao carregar:</strong> ${erro.message}</div>`;
+        }
+    </script>
+</body>
+</html>

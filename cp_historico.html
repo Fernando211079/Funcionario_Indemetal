@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ee0101">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<title>Histórico de CPs | Projeto Funcionários</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script type="module">import { protegerPagina } from "./js/page-auth.js"; await protegerPagina({perfis:["administrador","gestor"],destino:"funcionarios_inicio.html"});</script>
+</head>
+<body class="bg-light p-4">
+<main class="container home-shell">
+
+<section class="card p-4 shadow-sm">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="h3 mb-1">Histórico de CPs</h1>
+      <p class="text-muted mb-0">Acompanhe o envio e a resposta do RH em tempo real.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="cp_inicio.html" class="btn btn-outline-secondary">Voltar</a>
+      <button data-logout class="btn btn-sm btn-outline-secondary">Sair</button>
+    </div>
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-md-4">
+      <input id="busca" class="form-control" placeholder="Buscar funcionário, número ou setor">
+    </div>
+    <div class="col-md-3">
+      <select id="filtroTipo" class="form-select">
+        <option value="">Todos os tipos</option>
+        <option value="ocorrencia">Ocorrência</option>
+        <option value="horas_extras">Horas Extras</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <select id="filtroStatus" class="form-select">
+        <option value="">Todos os status</option>
+        <option>Pendente Gerente</option>
+        <option>Pendente RH</option>
+        <option>Recebida pelo RH</option>
+        <option>Aprovada pelo RH</option>
+        <option>Recusada pelo Gerente</option>
+        <option>Recusada pelo RH</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Nº</th><th>Tipo</th><th>Data</th><th>Funcionário / Grupo</th>
+          <th>Setor</th><th>Status</th><th>Última atualização</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lista"></tbody>
+    </table>
+  </div>
+  <div id="statusMsg" class="small text-muted mt-1"></div>
+</section>
+
+</main>
+
+<!-- Modal de detalhes -->
+<div class="modal fade" id="modalCP" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="titulo"></h5>
+          <div id="sub" class="small text-muted"></div>
+        </div>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="detalhes"></div>
+        <hr>
+        <h6>Andamento</h6>
+        <div id="timeline" class="vstack gap-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="imprimir" class="btn btn-outline-dark">Imprimir</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+import { observarCPs, descreverErroFirestore } from './js/firebase-db.js';
+import { imprimirDocumento, formatarDataBR, blocoAcoesCP, labelTipoCP, esc } from './js/cp-utils.js';
+
+const $ = id => document.getElementById(id);
+let cps = [], selecionada = null;
+const modal = new bootstrap.Modal($('modalCP'));
+
+const grupo = c => c.tipo === 'ocorrencia'
+  ? (c.funcionarioNome || '-')
+  : `${c.funcionarios?.length || 0} funcionário(s)`;
+
+function badge(s) {
+  const m = {
+    'Pendente Gerente'    : 'text-bg-warning',
+    'Pendente RH'         : 'text-bg-warning',
+    'Recebida pelo RH'    : 'text-bg-info',
+    'Aprovada pelo RH'    : 'text-bg-success',
+    'Recusada pelo Gerente': 'text-bg-danger',
+    'Recusada pelo RH'    : 'text-bg-danger'
+  };
+  return `<span class="badge ${m[s] || 'text-bg-secondary'}">${s || 'Pendente'}</span>`;
+}
+
+function documento(c) {
+  if (c.tipo === 'ocorrencia') {
+    return `<div class="top"><div><div class="title">INDEMETAL</div><div>COMUNICAÇÃO DE PESSOAL</div></div>`
+      + `<div><b>CP Nº:</b> ${c.numero || '-'}</div></div>`
+      + `<div class="section"><b>Nome:</b> ${esc(c.funcionarioNome || '')} &nbsp; <b>Chapa:</b> ${esc(c.chapa || '')} &nbsp; <b>Setor:</b> ${esc(c.setor || '')} &nbsp; <b>Data:</b> ${formatarDataBR(c.data)}</div>`
+      + blocoAcoesCP(c)
+      + `<div class="section"><b>Motivo:</b><br>${String(c.motivo || '').replace(/\n/g, '<br>')}</div>`;
+  }
+  const rows = (c.funcionarios || []).map(x =>
+    `<tr><td>${esc(x.reg||'')}</td><td>${esc(x.nome||'')}</td><td>${esc(x.horario||'')}</td><td>${esc(x.observacao||'')}</td></tr>`
+  ).join('');
+  return `<div class="top"><div><div class="title">INDEMETAL</div><div>AUTORIZAÇÃO PARA REALIZAÇÃO DE HORAS EXTRAS</div></div>`
+    + `<div>SETOR: ${esc(c.setor || '')}</div></div>`
+    + `<div class="section"><b>DATA:</b> ${formatarDataBR(c.data)}<br><b>MOTIVO:</b><br>${String(c.motivo || '').replace(/\n/g, '<br>')}</div>`
+    + `<div class="section"><table style="width:100%;border-collapse:collapse">`
+    + `<thead><tr><th style="border:1px solid #777;padding:5px">REG</th><th style="border:1px solid #777;padding:5px">NOME</th>`
+    + `<th style="border:1px solid #777;padding:5px">HORÁRIO</th><th style="border:1px solid #777;padding:5px">OBSERVAÇÃO</th></tr></thead>`
+    + `<tbody>${rows}</tbody></table></div>`;
+}
+
+function htmlHistoricoImpressao(historico) {
+  const h = (historico || []).slice().sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+  if (!h.length) return '';
+  const perfLabel = p => ({gerente_producao:'Gerente de Produção',rh:'RH',gestor:'Gestor',administrador:'Administrador'}[p] || p || '');
+  const linhas = h.map(x =>
+    `<tr style="border-bottom:1px solid #ddd">
+      <td style="padding:5px 8px;font-weight:bold;white-space:nowrap">${esc(x.acao || 'Atualização')}</td>
+      <td style="padding:5px 8px;color:#555;white-space:nowrap">${x.data ? new Date(x.data).toLocaleString('pt-BR') : ''}</td>
+      <td style="padding:5px 8px;color:#555">${esc(x.nome || perfLabel(x.perfil))}</td>
+      <td style="padding:5px 8px">${esc(x.observacao || '')}</td>
+    </tr>`
+  ).join('');
+  return `<div class="section" style="margin-top:14px"><b>Histórico / Observações</b>
+    <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:11px">
+      <thead><tr style="background:#f0f0f0">
+        <th style="padding:5px 8px;text-align:left;border-bottom:2px solid #999">Ação</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:2px solid #999">Data</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:2px solid #999">Por</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:2px solid #999">Observação</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table></div>`;
+}
+
+function render() {
+  const q = $('busca').value.toLowerCase();
+  const f = $('filtroTipo').value;
+  const s = $('filtroStatus').value;
+  const arr = cps.filter(c =>
+    (!f || c.tipo === f) &&
+    (!s || (c.statusCP || 'Pendente Gerente') === s) &&
+    (!q || `${c.numero} ${c.funcionarioNome || ''} ${c.tipo} ${c.setor || ''}`.toLowerCase().includes(q))
+  );
+  $('lista').innerHTML = arr.length
+    ? arr.map(c => `<tr>
+        <td><strong>${c.numero || '-'}</strong></td>
+        <td>${labelTipoCP(c)}</td>
+        <td>${formatarDataBR(c.data)}</td>
+        <td>${esc(grupo(c))}</td>
+        <td>${esc(c.setor || '-')}</td>
+        <td>${badge(c.statusCP || 'Pendente Gerente')}</td>
+        <td>${c.atualizadoEm ? new Date(c.atualizadoEm).toLocaleString('pt-BR') : '-'}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" data-ver="${c.id}">Ver andamento</button>
+            <button class="btn btn-outline-dark" data-print="${c.id}">Imprimir</button>
+          </div>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma CP encontrada.</td></tr>';
+  $('statusMsg').textContent = `${arr.length} registro(s) exibido(s).`;
+}
+
+function renderizarTimeline(historico) {
+  const h = (historico || []).slice().sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+  const perfLabel = p => ({gerente_producao:'Gerente de Produção',rh:'RH',gestor:'Gestor',administrador:'Administrador'}[p] || p || '');
+  $('timeline').innerHTML = h.length
+    ? h.map(x => {
+        const isAprov = /(Aprovada|Liberada)/i.test(x.acao);
+        const isRecus = /Recusada/i.test(x.acao);
+        const isObs   = x.acao === 'Observação';
+        const cls = isObs ? 'border-warning bg-warning bg-opacity-10'
+          : isAprov ? 'border-success bg-success bg-opacity-10'
+          : isRecus ? 'border-danger bg-danger bg-opacity-10'
+          : 'border-secondary-subtle bg-light';
+        return `<div class="border rounded p-2 ${cls}">
+          <div class="d-flex justify-content-between align-items-start">
+            <strong>${esc(x.acao || 'Atualização')}</strong>
+            <small class="text-muted">${x.data ? new Date(x.data).toLocaleString('pt-BR') : ''}</small>
+          </div>
+          <div class="small text-muted mt-1">${esc(x.nome || perfLabel(x.perfil))}${x.observacao ? ` · ${esc(x.observacao)}` : ''}</div>
+        </div>`;
+      }).join('')
+    : '<div class="text-muted">Sem histórico.</div>';
+}
+
+function abrir(c) {
+  selecionada = c;
+  $('titulo').textContent = `CP Nº ${c.numero || '-'} · ${labelTipoCP(c)}`;
+  $('sub').innerHTML = `${esc(c.setor || '-')} · ${formatarDataBR(c.data)} · ${badge(c.statusCP || 'Pendente Gerente')}`;
+  $('detalhes').innerHTML = documento(c);
+  renderizarTimeline(c.historico);
+  modal.show();
+}
+
+$('lista').onclick = e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const c = cps.find(x => x.id === (b.dataset.ver || b.dataset.print));
+  if (!c) return;
+  if (b.dataset.ver) abrir(c);
+  else imprimirDocumento(`${labelTipoCP(c)} ${c.numero || ''}`, documento(c) + htmlHistoricoImpressao(c.historico));
+};
+
+$('imprimir').onclick = () => selecionada && imprimirDocumento(
+  `${labelTipoCP(selecionada)} ${selecionada.numero || ''}`,
+  documento(selecionada) + htmlHistoricoImpressao(selecionada.historico)
+);
+
+$('busca').oninput  = render;
+$('filtroTipo').onchange   = render;
+$('filtroStatus').onchange = render;
+
+observarCPs((lista, _snap, erro) => {
+  if (erro) {
+    $('lista').innerHTML = `<tr><td colspan="8" class="text-danger text-center py-4">
+      <strong>Erro ao carregar (${erro.code || 'erro'})</strong><br>${descreverErroFirestore(erro)}
+    </td></tr>`;
+    return;
+  }
+  cps = lista;
+  render();
+}).catch(e => {
+  $('lista').innerHTML = `<tr><td colspan="8" class="text-danger text-center">Erro ao carregar: ${e.message}</td></tr>`;
+});
+</script>
+</body>
+</html>

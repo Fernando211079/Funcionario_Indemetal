@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <title>Funcionarios Ativos | Indemetal Etiquetas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+<script type="module">import { protegerPagina } from "./js/page-auth.js"; await protegerPagina({perfis:["administrador","gestor"],destino:"funcionarios_inicio.html"});</script></head>
+<body class="bg-light p-4">
+    <div class="container mb-3 app-topbar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="app-brand">
+                <div class="app-brand-mark">I</div>
+                <div><div class="app-brand-title">Projeto Funcionários</div><div class="app-brand-subtitle">Indemetal Etiquetas · <span data-user-role>Gestão</span> · <span data-user-sector>Setor</span></div></div>
+            </div>
+            <a href="funcionarios_inicio.html" class="btn btn-sm btn-outline-secondary">Início</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card shadow-sm p-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Lista de Funcionarios Ativos</h3>
+                <a href="funcionarios_inicio.html" class="btn btn-outline-secondary">Voltar</a>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label for="filtroNomeAtivo" class="form-label">Filtrar por nome</label>
+                    <input type="text" id="filtroNomeAtivo" class="form-control" placeholder="Digite o nome do funcionario">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Data Registro</th>
+                            <th>No Registro</th>
+                            <th>Funcionario</th>
+                            <th>Telefone</th>
+                            <th>Setor</th>
+                            <th>Turno</th>
+                            <th>Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaAtivos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDispensa" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dispensar Funcionario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formDispensa">
+                    <div class="modal-body">
+                        <input type="hidden" id="idFuncionarioDispensa">
+                        <div class="mb-3">
+                            <label for="dataDispensaModal" class="form-label">Data da Dispensa</label>
+                            <input type="date" id="dataDispensaModal" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="motivoDispensaModal" class="form-label">Motivo da Dispensa</label>
+                            <textarea id="motivoDispensaModal" class="form-control" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Confirmar Dispensa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalFerias" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Programar Ferias</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formFerias">
+                    <div class="modal-body">
+                        <input type="hidden" id="idFuncionarioFerias">
+                        <div class="mb-3">
+                            <label for="dataInicioFerias" class="form-label">Data Inicio</label>
+                            <input type="date" id="dataInicioFerias" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dataFimFerias" class="form-label">Data Fim</label>
+                            <input type="date" id="dataFimFerias" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="observacaoFerias" class="form-label">Observacao</label>
+                            <textarea id="observacaoFerias" class="form-control" rows="3" placeholder="Opcional"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Ferias</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEdicao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Cadastro do Funcionario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formEdicao">
+                    <div class="modal-body">
+                        <input type="hidden" id="idFuncionarioEdicao">
+                        <input type="hidden" id="quantidadePromocoesAtualEdicao" value="0">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="dataRegistroEdicao" class="form-label">Data do Registro</label>
+                                <input type="date" id="dataRegistroEdicao" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="numeroRegistroEdicao" class="form-label">No Registro</label>
+                                <input type="text" id="numeroRegistroEdicao" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="nomeFuncionarioEdicao" class="form-label">Nome</label>
+                                <input type="text" id="nomeFuncionarioEdicao" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="telefoneEdicao" class="form-label">Telefone</label>
+                                <input type="tel" id="telefoneEdicao" class="form-control" maxlength="15" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="setorTrabalhoEdicao" class="form-label">Setor</label>
+                                <input type="text" id="setorTrabalhoEdicao" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="turnoTrabalhoEdicao" class="form-label">Turno</label>
+                                <select id="turnoTrabalhoEdicao" class="form-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option>1o Turno</option>
+                                    <option>2o Turno</option>
+                                    <option>3o Turno</option>
+                                    <option>Comercial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="funcaoFuncionarioEdicao" class="form-label">Funcao</label>
+                                <input type="text" id="funcaoFuncionarioEdicao" class="form-control" required>
+                            </div>
+                            <div class="col-12">
+                                <hr class="my-1">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div>
+                                        <strong class="small">Promocoes</strong>
+                                        <span id="badgeMedalhasEdicao" class="ms-2"></span>
+                                    </div>
+                                    <button type="button" id="btnRegistrarPromocao" class="btn btn-sm btn-outline-warning">
+                                        + Registrar Nova Promocao
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-12 d-none" id="painelNovaPromocao">
+                                <div class="card border-warning bg-warning bg-opacity-10 p-3">
+                                    <p class="small text-muted mb-2">Preencha os dados da nova promocao. Cada promocao adiciona uma medalha ao funcionario.</p>
+                                    <div class="row g-2">
+                                        <div class="col-md-5">
+                                            <label for="cargoAnteriorEdicao" class="form-label small">Cargo Anterior</label>
+                                            <input type="text" id="cargoAnteriorEdicao" class="form-control form-control-sm" placeholder="Ex: Auxiliar de Producao">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label for="cargoNovoEdicao" class="form-label small">Novo Cargo</label>
+                                            <input type="text" id="cargoNovoEdicao" class="form-control form-control-sm" placeholder="Ex: Operador C">
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <button type="button" id="btnCancelarPromocao" class="btn btn-sm btn-outline-secondary w-100">Cancelar</button>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="observacaoPromocaoEdicao" class="form-label small">Observacao da Promocao</label>
+                                            <textarea
+                                                id="observacaoPromocaoEdicao"
+                                                class="form-control form-control-sm"
+                                                rows="2"
+                                                placeholder="Descreva o motivo ou detalhes da promocao (obrigatorio)"
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Salvar Alteracoes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import {
+            formatarDataBr,
+            aplicarMascaraTelefone,
+            funcionarioAtivo,
+            criarRegistroHistorico,
+            criarPeriodoFerias,
+            classificarPeriodoFerias,
+            obterInfoAlertaFerias,
+            calcularDiasAte,
+            identificarFerias,
+            obterDataHojeIso
+        } from "./js/app-utils.js";
+        import {
+            iniciarApp,
+            listarFuncionarios,
+            obterFuncionario,
+            atualizarFuncionario
+        } from "./js/firebase-db.js";
+
+        let modalDispensaInstancia = null;
+        let modalFeriasInstancia = null;
+        let modalEdicaoInstancia = null;
+
+        function abrirModalDispensa(id) {
+            document.getElementById("idFuncionarioDispensa").value = id;
+            document.getElementById("dataDispensaModal").value = new Date().toISOString().slice(0, 10);
+            document.getElementById("motivoDispensaModal").value = "";
+            modalDispensaInstancia.show();
+        }
+
+        function abrirModalFerias(id) {
+            document.getElementById("idFuncionarioFerias").value = id;
+            document.getElementById("dataInicioFerias").value = "";
+            document.getElementById("dataFimFerias").value = "";
+            document.getElementById("observacaoFerias").value = "";
+            modalFeriasInstancia.show();
+        }
+
+        let novaPromocaoPendente = false;
+
+        async function abrirModalEdicao(id) {
+            const funcionario = await obterFuncionario(id);
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            novaPromocaoPendente = false;
+            document.getElementById("painelNovaPromocao").classList.add("d-none");
+            document.getElementById("observacaoPromocaoEdicao").value = "";
+            document.getElementById("cargoAnteriorEdicao").value = funcionario.funcaoFuncionario || "";
+            document.getElementById("cargoNovoEdicao").value = "";
+
+            document.getElementById("idFuncionarioEdicao").value = id;
+            document.getElementById("dataRegistroEdicao").value = funcionario.dataRegistro || "";
+            document.getElementById("numeroRegistroEdicao").value = funcionario.numeroRegistro || "";
+            document.getElementById("nomeFuncionarioEdicao").value = funcionario.nomeFuncionario || "";
+            document.getElementById("telefoneEdicao").value = aplicarMascaraTelefone(funcionario.telefone || "");
+            document.getElementById("setorTrabalhoEdicao").value = funcionario.setorTrabalho || "";
+            document.getElementById("turnoTrabalhoEdicao").value = funcionario.turnoTrabalho || "";
+            document.getElementById("funcaoFuncionarioEdicao").value = funcionario.funcaoFuncionario || "";
+
+            const qtd = Number(funcionario.quantidadePromocoes || 0);
+            document.getElementById("quantidadePromocoesAtualEdicao").value = qtd;
+            atualizarBadgeMedalhas(qtd);
+
+            modalEdicaoInstancia.show();
+        }
+
+        function atualizarBadgeMedalhas(qtd) {
+            const badge = document.getElementById("badgeMedalhasEdicao");
+            if (qtd === 0) {
+                badge.innerHTML = '<span class="text-muted small">Nenhuma promocao registrada</span>';
+            } else {
+                badge.innerHTML = `<span class="badge text-bg-warning fs-6">${"🏅".repeat(qtd)} ${qtd} promocao${qtd > 1 ? "es" : ""}</span>`;
+            }
+        }
+
+        async function carregarAtivos() {
+            const funcionarios = await listarFuncionarios();
+            const termoBuscaNome = document.getElementById("filtroNomeAtivo").value.trim().toLowerCase();
+            const ativos = funcionarios.filter((funcionario) => {
+                if (!funcionarioAtivo(funcionario)) {
+                    return false;
+                }
+                if (!termoBuscaNome) {
+                    return true;
+                }
+                const nome = (funcionario.nomeFuncionario || "").toLowerCase();
+                return nome.includes(termoBuscaNome);
+            });
+
+            const tabela = document.getElementById("tabelaAtivos");
+            tabela.innerHTML = "";
+
+            if (ativos.length === 0) {
+                tabela.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum funcionario ativo cadastrado.</td></tr>';
+                return;
+            }
+
+            ativos.forEach((funcionario) => {
+                const linha = document.createElement("tr");
+                linha.innerHTML = `
+                    <td>${formatarDataBr(funcionario.dataRegistro)}</td>
+                    <td>${funcionario.numeroRegistro || "-"}</td>
+                    <td>${funcionario.nomeFuncionario || "-"}</td>
+                    <td>${funcionario.telefone || "-"}</td>
+                    <td>${funcionario.setorTrabalho || "-"}</td>
+                    <td>${funcionario.turnoTrabalho || "-"}</td>
+                    <td>
+                        <div class="d-flex flex-nowrap gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-acao="dispensar" data-id="${funcionario.id}">
+                            Dispensar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-acao="ferias" data-id="${funcionario.id}">
+                            Ferias
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" data-acao="editar" data-id="${funcionario.id}">
+                            Editar Cadastro
+                        </button>
+                        <a class="btn btn-sm btn-outline-dark" href="historico_funcionario.html?id=${funcionario.id}">
+                            Ficha
+                        </a>
+                        </div>
+                    </td>
+                `;
+                tabela.appendChild(linha);
+            });
+
+            tabela.querySelectorAll("button[data-acao][data-id]").forEach((botao) => {
+                botao.addEventListener("click", () => {
+                    const id = botao.getAttribute("data-id");
+                    const acao = botao.getAttribute("data-acao");
+                    if (acao === "dispensar") {
+                        abrirModalDispensa(id);
+                    } else if (acao === "ferias") {
+                        abrirModalFerias(id);
+                    } else if (acao === "editar") {
+                        abrirModalEdicao(id);
+                    }
+                });
+            });
+        }
+
+        document.getElementById("formDispensa").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const id = document.getElementById("idFuncionarioDispensa").value;
+            const dataDispensa = document.getElementById("dataDispensaModal").value;
+            const motivoDispensa = document.getElementById("motivoDispensaModal").value.trim();
+
+            if (!dataDispensa || !motivoDispensa) {
+                alert("Preencha data e motivo da dispensa.");
+                return;
+            }
+
+            const funcionario = await obterFuncionario(id);
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            const historicoObservacoes = Array.isArray(funcionario.historicoObservacoes)
+                ? [...funcionario.historicoObservacoes]
+                : [];
+
+            historicoObservacoes.push(
+                criarRegistroHistorico(
+                    dataDispensa,
+                    `Dispensa: ${motivoDispensa}`,
+                    "dispensa"
+                )
+            );
+
+            try {
+                await atualizarFuncionario(id, {
+                    dataDispensa,
+                    motivoDispensa,
+                    historicoObservacoes
+                });
+                modalDispensaInstancia.hide();
+                alert("Funcionario dispensado com sucesso.");
+                await carregarAtivos();
+            } catch (erro) {
+                alert(erro.message || "Erro ao salvar. Verifique se o servidor esta rodando.");
+            }
+        });
+
+        document.getElementById("formFerias").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const id = document.getElementById("idFuncionarioFerias").value;
+            const dataInicio = document.getElementById("dataInicioFerias").value;
+            const dataFim = document.getElementById("dataFimFerias").value;
+            const observacao = document.getElementById("observacaoFerias").value.trim();
+
+            if (!dataInicio || !dataFim) {
+                alert("Preencha data de inicio e fim das ferias.");
+                return;
+            }
+
+            if (dataFim < dataInicio) {
+                alert("A data fim nao pode ser menor que a data inicio.");
+                return;
+            }
+
+            const funcionario = await obterFuncionario(id);
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            const historicoFerias = Array.isArray(funcionario.historicoFerias) ? [...funcionario.historicoFerias] : [];
+            historicoFerias.push(criarPeriodoFerias(dataInicio, dataFim, observacao));
+
+            const historicoObservacoes = Array.isArray(funcionario.historicoObservacoes)
+                ? [...funcionario.historicoObservacoes]
+                : [];
+            const textoFerias = observacao
+                ? `Ferias programadas de ${formatarDataBr(dataInicio)} a ${formatarDataBr(dataFim)}. ${observacao}`
+                : `Ferias programadas de ${formatarDataBr(dataInicio)} a ${formatarDataBr(dataFim)}.`;
+            historicoObservacoes.push(
+                criarRegistroHistorico(dataInicio, textoFerias, "ferias")
+            );
+
+            try {
+                await atualizarFuncionario(id, { historicoFerias, historicoObservacoes });
+                modalFeriasInstancia.hide();
+                alert("Ferias registradas com sucesso.");
+            } catch (erro) {
+                alert(erro.message || "Erro ao salvar. Verifique se o servidor esta rodando.");
+            }
+        });
+
+        document.getElementById("formEdicao").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const id = document.getElementById("idFuncionarioEdicao").value;
+            const funcionario = await obterFuncionario(id);
+
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            const turnoAnterior = funcionario.turnoTrabalho || "";
+            const novoTurno = document.getElementById("turnoTrabalhoEdicao").value;
+            const novaFuncao = document.getElementById("funcaoFuncionarioEdicao").value.trim();
+            const dados = {
+                dataRegistro: document.getElementById("dataRegistroEdicao").value,
+                numeroRegistro: document.getElementById("numeroRegistroEdicao").value,
+                nomeFuncionario: document.getElementById("nomeFuncionarioEdicao").value,
+                telefone: aplicarMascaraTelefone(document.getElementById("telefoneEdicao").value),
+                setorTrabalho: document.getElementById("setorTrabalhoEdicao").value,
+                turnoTrabalho: novoTurno,
+                funcaoFuncionario: novaFuncao
+            };
+
+            const historicoObservacoes = Array.isArray(funcionario.historicoObservacoes)
+                ? [...funcionario.historicoObservacoes]
+                : [];
+
+            if (turnoAnterior !== novoTurno) {
+                historicoObservacoes.push(
+                    criarRegistroHistorico(
+                        new Date().toISOString().slice(0, 10),
+                        `Alteracao de turno: ${turnoAnterior || "-"} para ${novoTurno || "-"}`,
+                        "turno"
+                    )
+                );
+            }
+
+            if (novaPromocaoPendente) {
+                const observacaoPromocao = document.getElementById("observacaoPromocaoEdicao").value.trim();
+                const cargoAnterior = document.getElementById("cargoAnteriorEdicao").value.trim();
+                const cargoNovo = document.getElementById("cargoNovoEdicao").value.trim();
+
+                if (!observacaoPromocao) {
+                    alert("Preencha a observacao da promocao para confirmar.");
+                    return;
+                }
+
+                const novaQtd = Number(funcionario.quantidadePromocoes || 0) + 1;
+                dados.quantidadePromocoes = novaQtd;
+                dados.promovido = true;
+
+                const descricaoCargo = cargoAnterior && cargoNovo
+                    ? `Promovido de ${cargoAnterior} para ${cargoNovo}: ${observacaoPromocao}`
+                    : observacaoPromocao
+                        ? `Promovido: ${observacaoPromocao}`
+                        : "Promovido";
+
+                historicoObservacoes.push(
+                    criarRegistroHistorico(
+                        new Date().toISOString().slice(0, 10),
+                        descricaoCargo,
+                        "promocao"
+                    )
+                );
+            } else {
+                dados.promovido = Boolean(funcionario.promovido) || Number(funcionario.quantidadePromocoes || 0) > 0;
+            }
+
+            dados.historicoObservacoes = historicoObservacoes;
+
+            try {
+                await atualizarFuncionario(id, dados);
+                modalEdicaoInstancia.hide();
+                alert("Cadastro atualizado com sucesso.");
+                await carregarAtivos();
+            } catch (erro) {
+                alert(erro.message || "Erro ao salvar. Verifique se o servidor esta rodando.");
+            }
+        });
+
+        document.getElementById("btnRegistrarPromocao").addEventListener("click", () => {
+            novaPromocaoPendente = true;
+            document.getElementById("painelNovaPromocao").classList.remove("d-none");
+            document.getElementById("btnRegistrarPromocao").disabled = true;
+            document.getElementById("cargoNovoEdicao").focus();
+        });
+
+        document.getElementById("btnCancelarPromocao").addEventListener("click", () => {
+            novaPromocaoPendente = false;
+            document.getElementById("painelNovaPromocao").classList.add("d-none");
+            document.getElementById("btnRegistrarPromocao").disabled = false;
+            document.getElementById("observacaoPromocaoEdicao").value = "";
+            document.getElementById("cargoNovoEdicao").value = "";
+        });
+
+        document.getElementById("telefoneEdicao").addEventListener("input", (event) => {
+            event.target.value = aplicarMascaraTelefone(event.target.value);
+        });
+        document.getElementById("filtroNomeAtivo").addEventListener("input", () => carregarAtivos());
+
+        try {
+            await iniciarApp();
+            modalDispensaInstancia = new bootstrap.Modal(document.getElementById("modalDispensa"));
+            modalFeriasInstancia = new bootstrap.Modal(document.getElementById("modalFerias"));
+            modalEdicaoInstancia = new bootstrap.Modal(document.getElementById("modalEdicao"));
+            await carregarAtivos();
+        } catch (erro) {
+            alert(erro.message);
+        }
+    </script>
+</body>
+</html>

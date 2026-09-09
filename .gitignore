@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+Untitled
+node_modules/
+dados/
+*.tmp

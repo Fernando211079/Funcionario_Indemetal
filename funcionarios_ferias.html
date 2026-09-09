@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <title>Ferias | Indemetal Etiquetas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-alerta-ferias { border-left: 5px solid; }
+        .card-alerta-ferias.alerta-urgente { border-left-color: #dc3545; background: #fff5f5; }
+        .card-alerta-ferias.alerta-proximo { border-left-color: #ffc107; background: #fffbeb; }
+        .card-alerta-ferias.alerta-atencao { border-left-color: #0dcaf0; background: #f0fbff; }
+        .barra-progresso-ferias { height: 8px; border-radius: 4px; }
+    </style>
+    <link rel="stylesheet" href="css/app.css">
+<script type="module">import { protegerPagina } from "./js/page-auth.js"; await protegerPagina({perfis:["administrador","gestor"],destino:"funcionarios_inicio.html"});</script></head>
+<body class="bg-light p-4">
+    <div class="container mb-3 app-topbar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="app-brand">
+                <div class="app-brand-mark">I</div>
+                <div><div class="app-brand-title">Projeto Funcionários</div><div class="app-brand-subtitle">Indemetal Etiquetas · <span data-user-role>Gestão</span> · <span data-user-sector>Setor</span></div></div>
+            </div>
+            <a href="funcionarios_inicio.html" class="btn btn-sm btn-outline-secondary">Início</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card shadow-sm p-4 mb-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                <div>
+                    <h3 class="mb-0">Controle de Ferias</h3>
+                    <p class="text-muted mb-0 small">Programe ferias e acompanhe os avisos visuais</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProgramarFerias">
+                        Programar Ferias
+                    </button>
+                    <a href="funcionarios_inicio.html" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </div>
+
+            <div id="areaAlertas" class="mb-4"></div>
+
+            <h5 class="mb-3">Em ferias hoje</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Funcionario</th>
+                            <th>Turno</th>
+                            <th>Inicio</th>
+                            <th>Fim</th>
+                            <th>Observacao</th>
+                            <th style="width: 90px;">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaEmFerias"></tbody>
+                </table>
+            </div>
+
+            <h5 class="mb-3">Ferias programadas</h5>
+            <div id="cardsProgramadas" class="row g-3 mb-4"></div>
+
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                <h5 class="mb-0 text-muted">Historico (ferias encerradas)</h5>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <label for="filtroAnoHistorico" class="form-label mb-0 small text-muted">Ano:</label>
+                    <select id="filtroAnoHistorico" class="form-select form-select-sm" style="width:100px;">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Funcionario</th>
+                            <th>Inicio</th>
+                            <th>Fim</th>
+                            <th style="width: 90px;">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaHistorico"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalProgramarFerias" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Programar Ferias</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formProgramarFerias">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="funcionarioFerias" class="form-label">Funcionario</label>
+                            <select id="funcionarioFerias" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dataInicioProgramar" class="form-label">Data inicio</label>
+                            <input type="date" id="dataInicioProgramar" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dataFimProgramar" class="form-label">Data fim</label>
+                            <input type="date" id="dataFimProgramar" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="observacaoProgramar" class="form-label">Observacao</label>
+                            <textarea id="observacaoProgramar" class="form-control" rows="2" placeholder="Opcional"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar programacao</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal editar data de retorno -->
+    <div class="modal fade" id="modalEditarRetorno" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar retorno ao trabalho</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formEditarRetorno">
+                    <div class="modal-body">
+                        <p id="editarRetornoNome" class="fw-semibold mb-3"></p>
+                        <div class="mb-3">
+                            <label for="editarDataInicio" class="form-label">Data início</label>
+                            <input type="date" id="editarDataInicio" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editarDataFim" class="form-label">Data de retorno (fim das férias)</label>
+                            <input type="date" id="editarDataFim" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editarObservacao" class="form-label">Observação</label>
+                            <textarea id="editarObservacao" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div id="editarRetornoErro" class="alert alert-danger d-none py-2"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning">Salvar alteração</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import {
+            formatarDataBr,
+            funcionarioAtivo,
+            criarRegistroHistorico,
+            criarPeriodoFerias,
+            obterDataHojeIso,
+            calcularDiasAte,
+            classificarPeriodoFerias,
+            obterInfoAlertaFerias,
+            identificarFerias,
+            coletarPeriodosFerias
+        } from "./js/app-utils.js";
+        import {
+            iniciarApp,
+            listarFuncionarios,
+            obterFuncionario,
+            atualizarFuncionario
+        } from "./js/firebase-db.js";
+
+        let modalProgramar = null;
+        let modalEditarRetorno = null;
+        // contexto do modal de edição
+        let editarCtx = { funcionarioId: null, feriasId: null };
+        let todosFuncionarios = [];
+
+        function preencherSelectFuncionarios() {
+            const select = document.getElementById("funcionarioFerias");
+            const ativos = todosFuncionarios.filter(funcionarioAtivo);
+            select.innerHTML = '<option value="">Selecione...</option>';
+            ativos.forEach((funcionario) => {
+                const opcao = document.createElement("option");
+                opcao.value = funcionario.id;
+                opcao.textContent = `${funcionario.nomeFuncionario || "-"} (No ${funcionario.numeroRegistro || "-"})`;
+                select.appendChild(opcao);
+            });
+        }
+
+        async function excluirPeriodoFerias(funcionarioId, feriasId) {
+            if (!confirm("Deseja apagar este periodo de ferias?")) {
+                return;
+            }
+
+            const funcionario = await obterFuncionario(funcionarioId);
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            const historicoFerias = (funcionario.historicoFerias || []).filter(
+                (item) => identificarFerias(item) !== feriasId
+            );
+
+            try {
+                await atualizarFuncionario(funcionarioId, { historicoFerias });
+                await carregarPagina();
+            } catch (erro) {
+                alert(erro.message || "Erro ao apagar ferias.");
+            }
+        }
+
+        function abrirEditarRetorno(funcionarioId, feriasId, nomeFuncionario, dataInicio, dataFim, observacao) {
+            editarCtx = { funcionarioId, feriasId };
+            document.getElementById("editarRetornoNome").textContent = nomeFuncionario;
+            document.getElementById("editarDataInicio").value = dataInicio;
+            document.getElementById("editarDataFim").value = dataFim;
+            document.getElementById("editarObservacao").value = observacao || "";
+            document.getElementById("editarRetornoErro").classList.add("d-none");
+            modalEditarRetorno.show();
+        }
+
+        function renderizarAlertas(periodos, hoje) {
+            const area = document.getElementById("areaAlertas");
+            const proximas = periodos
+                .filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "programada")
+                .map((item) => ({
+                    ...item,
+                    dias: calcularDiasAte(item.ferias.dataInicio, hoje)
+                }))
+                .filter((item) => item.dias !== null && item.dias <= 30)
+                .sort((a, b) => a.dias - b.dias);
+
+            if (proximas.length === 0) {
+                area.innerHTML = "";
+                return;
+            }
+
+            const html = proximas.map(({ funcionario, ferias, dias }) => {
+                const alerta = obterInfoAlertaFerias(dias);
+                const classeCard = dias <= 3 ? "alerta-urgente" : dias <= 7 ? "alerta-proximo" : "alerta-atencao";
+                const percentual = Math.max(0, Math.min(100, ((30 - dias) / 30) * 100));
+                const fid = identificarFerias(ferias);
+                return `
+                    <div class="card card-alerta-ferias ${classeCard} shadow-sm mb-2 p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <span class="badge bg-${alerta.classe.split(" ")[0]} me-2">${alerta.texto}</span>
+                                <strong>${funcionario.nomeFuncionario || "-"}</strong>
+                                <span class="text-muted small ms-2">
+                                    ${formatarDataBr(ferias.dataInicio)} a ${formatarDataBr(ferias.dataFim)}
+                                </span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-editar-retorno"
+                                    data-funcionario-id="${funcionario.id}"
+                                    data-ferias-id="${fid}"
+                                    data-nome="${funcionario.nomeFuncionario || ''}"
+                                    data-inicio="${ferias.dataInicio}"
+                                    data-fim="${ferias.dataFim}"
+                                    data-obs="${ferias.observacao || ''}">
+                                    Editar retorno
+                                </button>
+                                <a href="historico_funcionario.html?id=${funcionario.id}" class="btn btn-sm btn-outline-dark">Ver ficha</a>
+                            </div>
+                        </div>
+                        <div class="progress barra-progresso-ferias mt-2">
+                            <div class="progress-bar bg-${alerta.classe.split(" ")[0]}" style="width: ${percentual}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            area.innerHTML = `
+                <div class="alert alert-light border mb-2 py-2">
+                    <strong>Lembretes:</strong> ${proximas.length} ferias programada(s) nos proximos 30 dias
+                </div>
+                ${html}
+            `;
+        }
+
+        function renderizarEmFerias(periodos, hoje) {
+            const tabela = document.getElementById("tabelaEmFerias");
+            const emFerias = periodos.filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "em_ferias");
+
+            if (emFerias.length === 0) {
+                tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Ninguem em ferias hoje.</td></tr>';
+                return;
+            }
+
+            tabela.innerHTML = "";
+            emFerias.forEach(({ funcionario, ferias }) => {
+                const linha = document.createElement("tr");
+                linha.className = "table-success";
+                linha.innerHTML = `
+                    <td><strong>${funcionario.nomeFuncionario || "-"}</strong></td>
+                    <td>${funcionario.turnoTrabalho || "-"}</td>
+                    <td>${formatarDataBr(ferias.dataInicio)}</td>
+                    <td>${formatarDataBr(ferias.dataFim)}</td>
+                    <td>${ferias.observacao || "-"}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-ferias"
+                            data-funcionario-id="${funcionario.id}" data-ferias-id="${identificarFerias(ferias)}">
+                            Apagar
+                        </button>
+                    </td>
+                `;
+                tabela.appendChild(linha);
+            });
+        }
+
+        function renderizarProgramadas(periodos, hoje) {
+            const container = document.getElementById("cardsProgramadas");
+            const programadas = periodos
+                .filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "programada")
+                .map((item) => ({
+                    ...item,
+                    dias: calcularDiasAte(item.ferias.dataInicio, hoje)
+                }))
+                .sort((a, b) => a.dias - b.dias);
+
+            if (programadas.length === 0) {
+                container.innerHTML = '<div class="col-12"><p class="text-muted mb-0">Nenhuma ferias programada. Clique em "Programar Ferias" para agendar.</p></div>';
+                return;
+            }
+
+            container.innerHTML = "";
+            programadas.forEach(({ funcionario, ferias, dias }) => {
+                const alerta = obterInfoAlertaFerias(dias);
+                const col = document.createElement("div");
+                col.className = "col-md-6 col-lg-4";
+                const fid = identificarFerias(ferias);
+                col.innerHTML = `
+                    <div class="card h-100 shadow-sm ${alerta.destaque ? "border-warning" : ""}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-${alerta.classe.split(" ")[0]}">${alerta.texto}</span>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-warning btn-editar-retorno"
+                                        data-funcionario-id="${funcionario.id}"
+                                        data-ferias-id="${fid}"
+                                        data-nome="${funcionario.nomeFuncionario || ''}"
+                                        data-inicio="${ferias.dataInicio}"
+                                        data-fim="${ferias.dataFim}"
+                                        data-obs="${ferias.observacao || ''}">
+                                        Editar
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-ferias"
+                                        data-funcionario-id="${funcionario.id}" data-ferias-id="${fid}">
+                                        Apagar
+                                    </button>
+                                </div>
+                            </div>
+                            <h6 class="card-title mb-1">${funcionario.nomeFuncionario || "-"}</h6>
+                            <p class="card-text small text-muted mb-1">${funcionario.turnoTrabalho || "-"}</p>
+                            <p class="card-text mb-2">
+                                <strong>${formatarDataBr(ferias.dataInicio)}</strong> ate
+                                <strong>${formatarDataBr(ferias.dataFim)}</strong>
+                            </p>
+                            ${ferias.observacao ? `<p class="small mb-0">${ferias.observacao}</p>` : ""}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        function popularAnosHistorico(periodos, hoje) {
+            const passadas = periodos.filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "passada");
+            const anos = [...new Set(passadas.map(({ ferias }) => (ferias.dataInicio || "").slice(0, 4)).filter(Boolean))].sort((a, b) => b - a);
+            const sel = document.getElementById("filtroAnoHistorico");
+            const anterior = sel.value;
+            sel.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option${a === anterior ? " selected" : ""}>${a}</option>`).join("");
+        }
+
+        function renderizarHistorico(periodos, hoje) {
+            const tabela = document.getElementById("tabelaHistorico");
+            const anoFiltro = document.getElementById("filtroAnoHistorico").value;
+
+            popularAnosHistorico(periodos, hoje);
+
+            const passadas = periodos
+                .filter(({ ferias }) => classificarPeriodoFerias(ferias, hoje) === "passada")
+                .filter(({ ferias }) => !anoFiltro || (ferias.dataInicio || "").startsWith(anoFiltro))
+                .sort((a, b) => (b.ferias.dataFim || "").localeCompare(a.ferias.dataFim || ""));
+
+            if (passadas.length === 0) {
+                tabela.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sem historico para este ano.</td></tr>';
+                return;
+            }
+
+            tabela.innerHTML = "";
+            passadas.forEach(({ funcionario, ferias }) => {
+                const linha = document.createElement("tr");
+                linha.innerHTML = `
+                    <td>${funcionario.nomeFuncionario || "-"}</td>
+                    <td>${formatarDataBr(ferias.dataInicio)}</td>
+                    <td>${formatarDataBr(ferias.dataFim)}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-ferias"
+                            data-funcionario-id="${funcionario.id}" data-ferias-id="${identificarFerias(ferias)}">
+                            Apagar
+                        </button>
+                    </td>
+                `;
+                tabela.appendChild(linha);
+            });
+        }
+
+        async function carregarPagina() {
+            todosFuncionarios = await listarFuncionarios();
+            preencherSelectFuncionarios();
+
+            const hoje = obterDataHojeIso();
+            const periodos = coletarPeriodosFerias(todosFuncionarios);
+
+            renderizarAlertas(periodos, hoje);
+            renderizarEmFerias(periodos, hoje);
+            renderizarProgramadas(periodos, hoje);
+            renderizarHistorico(periodos, hoje);
+
+            document.querySelectorAll(".btn-excluir-ferias").forEach((botao) => {
+                botao.addEventListener("click", () => {
+                    excluirPeriodoFerias(
+                        botao.getAttribute("data-funcionario-id"),
+                        botao.getAttribute("data-ferias-id")
+                    );
+                });
+            });
+
+            document.querySelectorAll(".btn-editar-retorno").forEach((botao) => {
+                botao.addEventListener("click", () => {
+                    abrirEditarRetorno(
+                        botao.getAttribute("data-funcionario-id"),
+                        botao.getAttribute("data-ferias-id"),
+                        botao.getAttribute("data-nome"),
+                        botao.getAttribute("data-inicio"),
+                        botao.getAttribute("data-fim"),
+                        botao.getAttribute("data-obs")
+                    );
+                });
+            });
+        }
+
+        document.getElementById("formProgramarFerias").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const id = document.getElementById("funcionarioFerias").value;
+            const dataInicio = document.getElementById("dataInicioProgramar").value;
+            const dataFim = document.getElementById("dataFimProgramar").value;
+            const observacao = document.getElementById("observacaoProgramar").value.trim();
+
+            if (!id || !dataInicio || !dataFim) {
+                alert("Preencha funcionario e datas.");
+                return;
+            }
+            if (dataFim < dataInicio) {
+                alert("A data fim nao pode ser menor que a data inicio.");
+                return;
+            }
+
+            const funcionario = await obterFuncionario(id);
+            if (!funcionario) {
+                alert("Funcionario nao encontrado.");
+                return;
+            }
+
+            const historicoFerias = Array.isArray(funcionario.historicoFerias) ? [...funcionario.historicoFerias] : [];
+            historicoFerias.push(criarPeriodoFerias(dataInicio, dataFim, observacao));
+
+            const historicoObservacoes = Array.isArray(funcionario.historicoObservacoes)
+                ? [...funcionario.historicoObservacoes]
+                : [];
+            const textoFerias = observacao
+                ? `Ferias programadas de ${formatarDataBr(dataInicio)} a ${formatarDataBr(dataFim)}. ${observacao}`
+                : `Ferias programadas de ${formatarDataBr(dataInicio)} a ${formatarDataBr(dataFim)}.`;
+            historicoObservacoes.push(criarRegistroHistorico(dataInicio, textoFerias, "ferias"));
+
+            try {
+                await atualizarFuncionario(id, { historicoFerias, historicoObservacoes });
+                modalProgramar.hide();
+                event.target.reset();
+                await carregarPagina();
+                alert("Ferias programadas com sucesso!");
+            } catch (erro) {
+                alert(erro.message || "Erro ao salvar.");
+            }
+        });
+
+        document.getElementById("formEditarRetorno").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const erroEl = document.getElementById("editarRetornoErro");
+            erroEl.classList.add("d-none");
+
+            const novaDataInicio = document.getElementById("editarDataInicio").value;
+            const novaDataFim    = document.getElementById("editarDataFim").value;
+            const novaObs        = document.getElementById("editarObservacao").value.trim();
+
+            if (novaDataFim < novaDataInicio) {
+                erroEl.textContent = "A data de retorno não pode ser anterior à data de início.";
+                erroEl.classList.remove("d-none");
+                return;
+            }
+
+            const funcionario = await obterFuncionario(editarCtx.funcionarioId);
+            if (!funcionario) {
+                erroEl.textContent = "Funcionário não encontrado.";
+                erroEl.classList.remove("d-none");
+                return;
+            }
+
+            const historicoFerias = (funcionario.historicoFerias || []).map((item) => {
+                if (identificarFerias(item) !== editarCtx.feriasId) return item;
+                return { ...item, dataInicio: novaDataInicio, dataFim: novaDataFim, observacao: novaObs };
+            });
+
+            try {
+                await atualizarFuncionario(editarCtx.funcionarioId, { historicoFerias });
+                modalEditarRetorno.hide();
+                await carregarPagina();
+            } catch (erro) {
+                erroEl.textContent = erro.message || "Erro ao salvar.";
+                erroEl.classList.remove("d-none");
+            }
+        });
+
+        try {
+            await iniciarApp();
+            modalProgramar = new bootstrap.Modal(document.getElementById("modalProgramarFerias"));
+            modalEditarRetorno = new bootstrap.Modal(document.getElementById("modalEditarRetorno"));
+            await carregarPagina();
+
+            document.getElementById("filtroAnoHistorico").addEventListener("change", () => {
+                const hoje = obterDataHojeIso();
+                const periodos = coletarPeriodosFerias(todosFuncionarios);
+                renderizarHistorico(periodos, hoje);
+                document.querySelectorAll(".btn-excluir-ferias").forEach((botao) => {
+                    botao.addEventListener("click", () => excluirPeriodoFerias(botao.getAttribute("data-funcionario-id"), botao.getAttribute("data-ferias-id")));
+                });
+            });
+        } catch (erro) {
+            alert(erro.message);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png"><title>Acesso | Projeto Funcionários</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="css/app.css"></head><body class="bg-light p-4"><main class="container access-shell"><section class="card access-hero"><div class="app-brand"><div class="app-brand-mark">I</div><div><div class="app-brand-title fs-4">Projeto Funcionários</div><div class="app-brand-subtitle">Indemetal Etiquetas · Acesso por perfil</div></div></div><div class="access-user mt-4"><div><div class="small text-muted">Usuário conectado</div><strong id="email">Carregando...</strong></div><button id="sair" class="btn btn-sm btn-outline-secondary">Sair</button></div></section><section id="erro" class="alert alert-danger d-none">Seu usuário não possui permissão para esta área.</section><section class="row g-4 access-grid"><div class="col-md-3"><article id="cardAdmin" class="card access-card"><div class="access-icon admin">A</div><h2>Administrador</h2><p>Controle geral do sistema, usuários, setores e visão completa da empresa.</p><button data-dest="admin.html" class="btn btn-danger w-100">Entrar como Administrador</button></article></div><div class="col-md-3"><article id="cardGestor" class="card access-card"><div class="access-icon gestor">G</div><h2>Gestor</h2><p>Acesso somente aos funcionários e processos do setor vinculado ao usuário.</p><button data-dest="funcionarios_inicio.html" class="btn btn-primary w-100">Entrar como Gestor</button></article></div><div class="col-md-3"><article id="cardGerente" class="card access-card"><div class="access-icon gerente">GP</div><h2>Gerente de Produção</h2><p>Libera CPs de Ocorrências e Horas Extras dos setores operacionais.</p><button data-dest="gerente_painel.html" class="btn btn-warning w-100">Abrir Gerência</button></article></div><div class="col-md-3"><article id="cardRH" class="card access-card"><div class="access-icon rh">RH</div><h2>RH</h2><p>Painel centralizado para acompanhar funcionários e receber CPs de todos os setores.</p><button data-dest="rh_painel.html" class="btn btn-success w-100">Entrar como RH</button></article></div></section><p class="text-center text-muted small mt-4">O sistema identifica seu perfil no Firebase e libera somente as áreas autorizadas.</p></main><script type="module">
+import { exigirLogin, sair } from './js/auth.js';
+import { getPerfilAtual } from './js/access.js';
+
+const emailEl=document.getElementById('email');
+const erroEl=document.getElementById('erro');
+
+function mostrarErro(msg){
+  emailEl.textContent='Não foi possível verificar o acesso';
+  erroEl.textContent=msg;
+  erroEl.classList.remove('d-none');
+  document.querySelectorAll('[data-dest]').forEach(b=>b.disabled=true);
+}
+
+try {
+  const user=await exigirLogin('acesso.html');
+  emailEl.textContent=user.email||'Usuário';
+  const p=await getPerfilAtual();
+  const perfil=p?.perfil||'sem_perfil';
+  const map={administrador:'cardAdmin',gestor:'cardGestor',gerente_producao:'cardGerente',rh:'cardRH'};
+  Object.entries(map).forEach(([nome,id])=>{
+    const el=document.getElementById(id);
+    const permitido=perfil==='administrador'||perfil===nome;
+    if(!permitido) el.classList.add('access-disabled');
+  });
+  if(perfil==='sem_perfil'||p?.ativo!==true){
+    erroEl.textContent='Seu usuário ainda não possui um perfil ativo. Peça ao Administrador para cadastrar seu acesso.';
+    erroEl.classList.remove('d-none');
+  }
+  document.querySelectorAll('[data-dest]').forEach(btn=>btn.addEventListener('click',()=>{
+    const dest=btn.dataset.dest;
+    const autorizado=perfil==='administrador' || (perfil==='gestor'&&dest==='funcionarios_inicio.html') || (perfil==='gerente_producao'&&dest==='gerente_painel.html') || (perfil==='rh'&&dest==='rh_painel.html');
+    if(autorizado) location.href=dest; else { erroEl.textContent='Seu perfil não possui acesso a esta área.'; erroEl.classList.remove('d-none'); }
+  }));
+  document.getElementById('sair').onclick=async()=>{await sair();location.href='login.html'};
+} catch(e) {
+  console.error('Falha ao carregar o perfil:',e);
+  mostrarErro('Não foi possível carregar seu perfil. Verifique a conexão com o Firebase e tente novamente.');
+}
+</script></body></html>

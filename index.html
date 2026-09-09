@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <title>Projeto Funcionários</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center p-4">
+  <div class="card p-4 text-center shadow-sm" style="max-width:460px;width:100%">
+    <div class="app-brand justify-content-center mb-3">
+      <div class="app-brand-mark">I</div>
+      <div>
+        <div class="app-brand-title">Projeto Funcionários</div>
+        <div class="app-brand-subtitle">Indemetal Etiquetas</div>
+      </div>
+    </div>
+    <p id="status" class="text-muted mb-2">Abrindo o sistema...</p>
+    <div class="spinner-border spinner-border-sm text-danger" role="status" aria-hidden="true"></div>
+    <noscript>
+      <p class="text-danger mt-3 mb-0">É necessário ativar o JavaScript para acessar o sistema.</p>
+    </noscript>
+  </div>
+
+  <script>
+    // O index é apenas a porta de entrada. Não depende do Firebase para redirecionar.
+    // Isso evita que uma falha temporária do Firebase deixe a tela presa em “Verificando acesso”.
+    const destino = 'login.html';
+    const status = document.getElementById('status');
+    status.textContent = 'Abrindo tela de acesso...';
+    window.setTimeout(() => { window.location.replace(destino); }, 250);
+  </script>
+</body>
+</html>

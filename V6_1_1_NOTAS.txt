@@ -1,0 +1,13 @@
+V6.1.1 — Segurança e fluxo de CPs
+
+Correções:
+- Gerente consulta somente CPs com statusGerente == "Pendente".
+- Regra do Firestore para Gerente corresponde à consulta (statusGerente == "Pendente"), permitindo a query com segurança.
+- RH e Administrador mantêm leitura ampla conforme o perfil.
+- Gestor continua limitado ao próprio setor.
+- Fluxo: Gestor -> Gerente -> RH; Administração -> RH direto.
+- CP nova já grava setor, statusGerente, statusRH, statusCP e etapaAtual.
+- O histórico é mantido na própria CP.
+- Não foi alterado o layout intencionalmente.
+
+IMPORTANTE: o deploy anterior deve ser mantido como segurança até o teste da V6.1.1.

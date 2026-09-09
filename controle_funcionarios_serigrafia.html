@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ee0101"><link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <title>Cadastro de Funcionarios | Indemetal Etiquetas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+<script type="module">import { protegerPagina } from "./js/page-auth.js"; await protegerPagina({perfis:["administrador","gestor"],destino:"funcionarios_inicio.html"});</script></head>
+<body class="bg-light p-4">
+    <div class="container mb-3 app-topbar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="app-brand">
+                <div class="app-brand-mark">I</div>
+                <div><div class="app-brand-title">Projeto Funcionários</div><div class="app-brand-subtitle">Indemetal Etiquetas · <span data-user-role>Gestão</span> · <span data-user-sector>Setor</span></div></div>
+            </div>
+            <a href="funcionarios_inicio.html" class="btn btn-sm btn-outline-secondary">Início</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card shadow-sm p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Cadastro de Funcionários</h3>
+                <a href="funcionarios_inicio.html" class="btn btn-outline-secondary">Voltar</a>
+            </div>
+            <p class="text-muted mb-4">Indemetal Etiquetas</p>
+
+            <form id="formFuncionario">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="dataRegistro">Data do Registro</label>
+                        <input type="date" id="dataRegistro" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="numeroRegistro">Numero do Registro</label>
+                        <input type="text" id="numeroRegistro" class="form-control" placeholder="Ex: 2026-001" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="nomeFuncionario">Nome do Funcionario</label>
+                        <input type="text" id="nomeFuncionario" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="telefone">Telefone</label>
+                        <input type="tel" id="telefone" class="form-control" placeholder="(00) 00000-0000" maxlength="15" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="setorTrabalho">Setor de Trabalho</label>
+                        <select id="setorTrabalho" class="form-select" required><option value="">Carregando setores...</option></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="turnoTrabalho">Turno de Trabalho</label>
+                        <select id="turnoTrabalho" class="form-select" required>
+                            <option value="">Selecione...</option>
+                            <option>1o Turno</option>
+                            <option>2o Turno</option>
+                            <option>3o Turno</option>
+                            <option>Comercial</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="funcaoFuncionario">Funcao</label>
+                        <input type="text" id="funcaoFuncionario" class="form-control" placeholder="Ex: Auxiliar de Serigrafia" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-danger mt-4 w-100">Salvar Registro</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { aplicarMascaraTelefone, criarRegistroHistorico } from "./js/app-utils.js";
+        import { iniciarApp, adicionarFuncionario } from "./js/firebase-db.js";
+        import { getPerfilAtual, listarSetores } from "./js/access.js";
+
+        try {
+            await iniciarApp();
+            const perfil = await getPerfilAtual();
+            const setorSelect = document.getElementById("setorTrabalho");
+            const setores = await listarSetores();
+            setorSelect.innerHTML = '<option value="">Selecione o setor...</option>' + setores.map(s => `<option value="${s.nome}">${s.nome}</option>`).join("");
+            if (perfil?.perfil === "gestor") {
+                setorSelect.value = perfil.setor;
+                setorSelect.disabled = true;
+            } else if (perfil?.setor && perfil.setor !== "Todos") {
+                setorSelect.value = perfil.setor;
+            }
+        } catch (erro) {
+            alert(erro.message);
+        }
+
+        document.getElementById("dataRegistro").value = new Date().toISOString().slice(0, 10);
+
+        document.getElementById("formFuncionario").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const telefoneInput = document.getElementById("telefone");
+            const dataRegistro = document.getElementById("dataRegistro").value;
+            const nomeFuncionario = document.getElementById("nomeFuncionario").value.trim();
+            const funcaoFuncionario = document.getElementById("funcaoFuncionario").value.trim();
+            const turnoTrabalho = document.getElementById("turnoTrabalho").value;
+
+            const novoFuncionario = {
+                dataRegistro,
+                numeroRegistro: document.getElementById("numeroRegistro").value.trim(),
+                nomeFuncionario,
+                telefone: aplicarMascaraTelefone(telefoneInput.value),
+                setorTrabalho: document.getElementById("setorTrabalho").value.trim(),
+                turnoTrabalho,
+                funcaoFuncionario,
+                promovido: false,
+                historicoObservacoes: [
+                    criarRegistroHistorico(
+                        dataRegistro,
+                        `Admissao: ${nomeFuncionario} cadastrado(a) como ${funcaoFuncionario} no turno ${turnoTrabalho}.`,
+                        "cadastro"
+                    )
+                ],
+                historicoFerias: []
+            };
+
+            try {
+                const id = await adicionarFuncionario(novoFuncionario);
+                alert("Registro salvo com sucesso!");
+                if (confirm("Deseja abrir a ficha individual do funcionario agora?")) {
+                    window.location.href = `historico_funcionario.html?id=${id}`;
+                    return;
+                }
+                event.target.reset();
+                document.getElementById("setorTrabalho").disabled = false;
+                document.getElementById("setorTrabalho").value = "";
+                document.getElementById("dataRegistro").value = new Date().toISOString().slice(0, 10);
+            } catch (erro) {
+                console.error("Erro completo:", erro);
+                alert(erro.message || "Erro ao salvar. Verifique se o servidor esta rodando.");
+            }
+        });
+
+        document.getElementById("telefone").addEventListener("input", (event) => {
+            event.target.value = aplicarMascaraTelefone(event.target.value);
+        });
+    </script>
+</body>
+</html>
