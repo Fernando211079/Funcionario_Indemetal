@@ -15,7 +15,9 @@ service cloud.firestore {
     }
     match /setores/{id} { allow read: if auth(); allow create, update, delete: if admin(); }
     match /funcionarios/{id} {
-      allow read: if admin() || rh() || (gestor() && (resource.data.setorTrabalho == setorAtual() || resource.data.setor == setorAtual()));
+      allow read: if admin() || rh()
+        || gerente() && resource.data.get('setorTrabalho', resource.data.get('setor', '')) != 'Administração'
+        || (gestor() && (resource.data.setorTrabalho == setorAtual() || resource.data.setor == setorAtual()));
       allow create: if admin() || rh() || (gestor() && request.resource.data.setorTrabalho == setorAtual());
       allow update: if admin() || rh() || (gestor() && resource.data.setorTrabalho == setorAtual() && request.resource.data.setorTrabalho == setorAtual());
       allow delete: if admin() || (gestor() && (resource.data.setorTrabalho == setorAtual() || resource.data.setor == setorAtual()));

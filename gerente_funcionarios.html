@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ee0101">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <title>Lista de Funcionários | Gerente de Produção</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module">
+    import { protegerPagina } from "./js/page-auth.js";
+    await protegerPagina({ perfis: ["administrador", "gerente_producao"], destino: "gerente_painel.html" });
+  </script>
+</head>
+<body class="bg-light p-4">
+<main class="container home-shell">
+
+  <!-- Cabeçalho -->
+  <section class="card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <div class="app-brand-title fs-4">Lista de Funcionários</div>
+        <div class="app-brand-subtitle">Todos os funcionários dos setores operacionais — somente leitura</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="gerente_painel.html" class="btn btn-outline-secondary">← Voltar ao Painel</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contadores -->
+  <section class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Total de funcionários</div>
+        <div id="cntTotal" class="display-6 fw-bold">0</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Ativos</div>
+        <div id="cntAtivos" class="display-6 fw-bold text-success">0</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Dispensados</div>
+        <div id="cntDispensados" class="display-6 fw-bold text-danger">0</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filtros -->
+  <section class="card p-3 mb-3">
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      <div>
+        <label for="filtroSetor" class="form-label mb-0 fw-semibold">Setor:</label>
+        <select id="filtroSetor" class="form-select mt-1" style="max-width:240px">
+          <option value="">Todos os setores</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroStatus" class="form-label mb-0 fw-semibold">Situação:</label>
+        <select id="filtroStatus" class="form-select mt-1" style="max-width:180px">
+          <option value="">Todos</option>
+          <option value="ativo" selected>Ativos</option>
+          <option value="dispensado">Dispensados</option>
+        </select>
+      </div>
+      <div class="ms-auto align-self-end">
+        <span id="lblTotal" class="text-muted small"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabela -->
+  <section class="card p-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Nº Reg.</th>
+            <th>Nome</th>
+            <th>Setor</th>
+            <th>Função</th>
+            <th>Turno</th>
+            <th>Situação</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="listaFuncionarios"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+  import { iniciarApp, listarFuncionarios } from "./js/firebase-db.js";
+  import { funcionarioAtivo } from "./js/app-utils.js";
+
+  const $ = id => document.getElementById(id);
+  let todos = [];
+
+  function ativo(f) { return funcionarioAtivo(f); }
+
+  function render() {
+    const setor = $("filtroSetor").value;
+    const status = $("filtroStatus").value;
+
+    const arr = todos.filter(f => {
+      const setorF = f.setorTrabalho || f.setor || "";
+      const eAtivo = ativo(f);
+      if (setor && setorF !== setor) return false;
+      if (status === "ativo" && !eAtivo) return false;
+      if (status === "dispensado" && eAtivo) return false;
+      return true;
+    });
+
+    $("cntTotal").textContent = todos.length;
+    $("cntAtivos").textContent = todos.filter(f => ativo(f)).length;
+    $("cntDispensados").textContent = todos.filter(f => !ativo(f)).length;
+    $("lblTotal").textContent = `${arr.length} funcionário(s) exibido(s)`;
+
+    if (!arr.length) {
+      $("listaFuncionarios").innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Nenhum funcionário encontrado.</td></tr>';
+      return;
+    }
+
+    $("listaFuncionarios").innerHTML = arr.map(f => {
+      const eAtivo = ativo(f);
+      const badgeStatus = eAtivo
+        ? '<span class="badge text-bg-success">Ativo</span>'
+        : '<span class="badge text-bg-danger">Dispensado</span>';
+      return `<tr>
+        <td><strong>${f.numeroRegistro || "-"}</strong></td>
+        <td>${f.nomeFuncionario || "-"}</td>
+        <td><span class="badge text-bg-secondary">${f.setorTrabalho || f.setor || "-"}</span></td>
+        <td>${f.funcaoFuncionario || "-"}</td>
+        <td>${f.turnoTrabalho || "-"}</td>
+        <td>${badgeStatus}</td>
+        <td>
+          <a href="gerente_ficha_funcionario.html?id=${f.id}" class="btn btn-sm btn-outline-primary">Ver ficha</a>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  function preencherFiltroSetores() {
+    const setores = [...new Set(todos.map(f => f.setorTrabalho || f.setor || "").filter(Boolean))].sort();
+    const anterior = $("filtroSetor").value;
+    $("filtroSetor").innerHTML = '<option value="">Todos os setores</option>' +
+      setores.map(s => `<option${s === anterior ? " selected" : ""}>${s}</option>`).join("");
+  }
+
+  try {
+    await iniciarApp();
+    todos = await listarFuncionarios();
+    preencherFiltroSetores();
+    $("filtroSetor").addEventListener("change", render);
+    $("filtroStatus").addEventListener("change", render);
+    render();
+  } catch (erro) {
+    document.querySelector("main").innerHTML =
+      `<div class="alert alert-danger"><strong>Erro ao carregar:</strong> ${erro.message}</div>`;
+  }
+</script>
+</body>
+</html>
